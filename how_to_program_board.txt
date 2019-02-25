@@ -1,0 +1,16 @@
+This project uses openOCD and a makefile to program the psi_blade controller board
+The board had a atsamd21g18a.
+The board needs between 7-8V to be properly powered. The cpu should work with a lower supply voltage.
+Use the AVR connection on atmel-ice
+A openOCD server needs to be running before "make debug" will work.
+To start server type "openocd" when in the same folder as the makefile and the openocd.cfg files.
+A degging server will then start if the debugger is connected to a powered board.
+
+Open a second cmd and use following commands to load the program onto the cpu.
+
+commands:
+	make 			- compile and link
+	make debug 		- open a gdb session with the *.elf file created by make
+	(gdb) load		- load file to board
+	(gdb) monitor reset 	- reset board to start program execution
+	(gdb) quit		- quit the gdb session

@@ -1,0 +1,38 @@
+LDSCRIPT = asf_files/samd21g18a_flash.ld
+BOOTUP   = asf_files/samd21/source/gcc/startup_samd21.o asf_files/samd21/source/system_samd21.o
+MCUTYPE  = __SAMD21G18A__
+
+OBJS=$(BOOTUP) TestCode_bttn.o pb_button.o pb_gpio.o pb_eic.o pb_circular_buffer.o pb_observer.o pb_critical_sections.o
+
+# Tools
+CC=arm-none-eabi-gcc
+LD=arm-none-eabi-gcc
+AR=arm-none-eabi-ar
+AS=arm-none-eabi-as
+
+ELF=TestCode_bttn.elf
+
+LDFLAGS += -T$(LDSCRIPT) -mthumb -mcpu=cortex-m0 -Wl,--gc-sections
+CFLAGS  += -mcpu=cortex-m0 -mthumb -g
+CFLAGS  += -I asf_files -I asf_files/samd21/include -I asf_files/samd21/include/component -I asf_files/cmsis -I asf_files/samd21/source/ -I .
+CFLAGS  += -D$(MCUTYPE)
+
+$(ELF): $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+
+# compile and generate dependency info
+%.o: %.c
+	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) -MM $(CFLAGS) $< > $*.d
+
+%.o: %.s
+	$(AS) $< -o $@
+
+clean:
+	rm -f $(OBJS) $(OBJS:.o=.d) $(ELF) startup_stm32f* $(CLEANOTHER)
+
+debug: $(ELF)
+	arm-none-eabi-gdb -iex "target extended-remote localhost:3333" $(ELF)
+
+# pull in dependencies
+-include $(OBJS:.o=.d)
