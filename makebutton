@@ -2,7 +2,7 @@ LDSCRIPT = asf_files/samd21g18a_flash.ld
 BOOTUP   = asf_files/samd21/source/gcc/startup_samd21.o asf_files/samd21/source/system_samd21.o
 MCUTYPE  = __SAMD21G18A__
 
-OBJS=$(BOOTUP) TestCode_bttn.o pb_button.o pb_gpio.o pb_eic.o pb_circular_buffer.o pb_observer.o pb_critical_sections.o
+OBJS=$(BOOTUP) TestCode_bttn.o pb_button.o pb_gpio.o pb_eic.o pb_circular_buffer.o pb_observer.o pb_critical_sections.o pb_spi.o pb_sercom_handlers.o
 
 # Tools
 CC=arm-none-eabi-gcc
