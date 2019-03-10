@@ -1,52 +1,18 @@
 #ifndef PB_SPI_H__
 #define PB_SPI_H__
 
-#define PB_SPI_MAX_CHANNELS_PER_SPI_INSTANCE 2
-
-/*
-    1. SPI instance define and memory allocation macro
-        a. Parameters: name, output_queue_size, input_queue_size, num_observers
-        b. Setup memory for output buffer (pb_circular_buffer)
-        c. Setup memory for input buffer (pb_circular_buffer)
-        d. Define input observer
-
-    2. Init function
-        a. Input parameters: SPI instance name, SERCOM[n] to use and configure,
-        b. Sett pin function
-        c. Enabling clock
-        d. Configure module
-        e. Enable interrupt
-        f. If output_queue_size or input_queue_size is 0 (zero), then disable the
-           functionality associated with it.
-
-    3. Send function
-        a. Can queue data to a queue.
-           Data is sent when SPI hardware is ready (generates interrupt).
-        b. Waiting loop, pulling a ready flag
-    
-    4. Receive function
-        a. Interrupt is generated on receive.
-           Interrupt handler takes data and queues it to a receive queue.
-        b. A process function that should be run from main loop, dequeues data
-           and notifies all subscribed parties by calling their callback function.
-           Use observer module to call callback functions of subscribed modules.
-
-    5. Subscribe to notification
-    6. Unsubscribe to notification
-    7. Process incomming data function
-
- */
-
 #include "samd21.h"
 #include "pb_observer.h"
 #include "pb_circular_buffer.h"
-
 
 typedef enum
 {
     PB_SPI_SUCCESS,
     PB_SPI_FAILURE,
+    PB_SPI_BUSY,
 } pb_spi_retval_t;
+
+
 
 typedef enum
 {
@@ -104,7 +70,7 @@ typedef enum
 {
     PB_SPI_MASTER_SLAVE_SELECT_DISABLED = 0,
     PB_SPI_MASTER_SLAVE_SELECT_ENABLED  = 1,
-} pb_spi_master_slave_select_enable_t;
+} pb_spi_master_slave_select_t;
 
 typedef enum
 {
@@ -112,11 +78,6 @@ typedef enum
     PB_SPI_SLAVE_SELECT_LOW_DETECT_ENABLED  = 1,
 } pb_spi_slave_select_low_detect_t;
 
-/*typedef enum
-{
-    PB_SPI_CHARACTER_SIZE_8BITS = 0x0,
-    PB_SPI_CHARACTER_SIZE_9BITS = 0x1,
-} pb_spi_character_size_t;*/
 
 typedef struct
 {
@@ -130,77 +91,81 @@ typedef struct
     pb_spi_run_in_standby_t              run_in_standby;
     pb_spi_master_slave_select_t         master_slave_select;
     pb_spi_slave_select_low_detect_t     slave_select_low_detect;
-  /*pb_spi_character_size_t              character_size;*/
     uint32_t                             bit_rate_in_Hz;
 } pb_spi_config_t;
 
+typedef enum
+{
+    PB_SPI_STATE_IDLE,
+    PB_SPI_STATE_SENDING,
+    PB_SPI_STATE_RECEIVING,
+    PB_SPI_STATE_SEND_AND_RECEIVE,
+} pb_spi_channel_state_t;
+
+
+struct pb_spi_channel_s; // Needed because struct pb_spi_t and pb_spi_channel_t has pointers to each other
+
+typedef void (*pb_spi_send_complete_cb_t)(struct pb_spi_channel_s* channel);
+typedef void (*pb_spi_receive_complete_cb_t)(struct pb_spi_channel_s* channel, uint8_t* p_receive_buffer, uint32_t rec_buf_length);
+typedef void (*pb_spi_send_and_receive_complete_cb_t)(struct pb_spi_channel_s* channel, uint8_t* p_receive_buffer, uint32_t rec_buf_length);
 
 typedef struct
 {
-    SercomSpi*                      spi_instance;
-    pb_spi_config_t                 config;
-    bool                            enabled;
-    bool                            is_transmitting;
-    pb_spi_channel_t*               transmitting_channel;
-    pb_spi_transmit_complete_cb_t   on_transmit_complete;
-    pb_spi_channel_t*               connected_channels[PB_SPI_MAX_CHANNELS_PER_SPI_INSTANCE];
-    bool                            slave_read_request_pending[PB_SPI_MAX_CHANNELS_PER_SPI_INSTANCE];
+    SercomSpi*                                  spi_instance;
+    pb_spi_config_t                             config;
+    bool                                        enabled;
+
+    struct pb_spi_channel_s*                    transmitting_channel;
+    pb_spi_channel_state_t                      state;
+    union
+    {
+        pb_spi_send_complete_cb_t               send_callback;
+        pb_spi_receive_complete_cb_t            receive_callback;
+        pb_spi_send_and_receive_complete_cb_t   send_and_receive_callback;
+    };
+
+    uint8_t* const                              send_data_buffer;
+    uint32_t                                    send_data_length;
+    uint32_t                                    send_index;
+    uint32_t const                              send_buffer_size;
+    
+    uint8_t* const                              receive_data_buffer;
+    uint32_t                                    receive_data_length;
+    uint32_t                                    receive_index;
+    uint32_t const                              receive_buffer_size;
 } pb_spi_t;
 
 
-typedef struct
+typedef enum
 {
-    uint16_t slave_select_pin;
-    uint16_t slave_read_request_interrupt_pin;
-} pb_spi_channel_config_t;
+    PB_SPI_CHANNEL_SS_TYPE_ENABLE_LOW,
+    PB_SPI_CHANNEL_SS_TYPE_ENABLE_HIGH,
+} pb_spi_channel_ss_type_t;
 
 
-typedef struct
+typedef struct pb_spi_channel_s
 {
-    pb_observer_t*  p_observer;
-    pb_crclrbuf_t*  p_out_queue;
-    pb_crclrbuf_t*  p_in_queue;
-    uint16_t        size_out_queue;
-    uint16_t        size_in_queue;
+    pb_spi_t*                 spi_transport;
+    uint16_t                  ss_pin;
+    pb_spi_channel_ss_type_t  ss_type;
 
-    uint32_t        bytes_transmitted;
-    uint32_t        bytes_received;
-    uint32_t        bytes_overflowed;
-
-    uint16_t        ss_pin;
-    uint16_t        slave_request_pin;
-
-    bool            is_transmitting;
-    pb_spi_t*       spi_transport;
+    uint32_t                  bytes_transmitted;
+    uint32_t                  bytes_received;
 } pb_spi_channel_t;
 
 
-typedef void (*pb_spi_on_evt_cb_t)(void* context);
-
-typedef void (*pb_spi_transmit_complete_cb_t)(pb_spi_channel_t* channel);
-
-#define PB_SPI_DEF(name_)  \
-    pb_spi_t (name_);      \
-
-
-#define PB_SPI_CHANNEL_DEF(name_, out_queue_size_, in_queue_size_, num_observers_) \
-    PB_CRCLRBUF_DEF(name_ ## _out_queue, out_queue_size_, sizeof(uint8_t));        \
-    PB_CRCLRBUF_DEF(name_ ## _in_queue, in_queue_size_, sizeof(uint8_t));          \
-    PB_OBSERVER_DEF(name_ ## _observer, num_observers_);                           \
-    pb_spi_channel_t (name_) = {(name_ ## _observer), (name_ ## _out_queue),       \
-        (name_ ## _in_queue), out_queue_size_, in_queue_size, 0, 0, 0}             \
+#define PB_SPI_TRANSPORT_DEF(name_, send_buffer_size_, receive_buffer_size_)      \
+    uint8_t (name_ ## _send_buffer)[send_buffer_size_];                           \
+    uint8_t (name_ ## _receive_buffer)[receive_buffer_size_];                     \
+    pb_spi_t (name_) = {NULL, {0}, 0, {NULL}, NULL, PB_SPI_STATE_IDLE, NULL,      \
+                        (name_ ## _send_buffer), 0, 0, (send_buffer_size_),       \
+                        (name_ ## _receive_buffer), 0, 0, (receive_buffer_size_)} \
 
 pb_spi_retval_t pb_spi_transport_init(pb_spi_t* spi, Sercom* SERCOMn, pb_spi_config_t* config);
-pb_spi_retval_t pb_spi_channel_init(pb_spi_channel_t* channel, pb_spi_t* connect_to, pb_spi_channel_config_t* config);
+pb_spi_retval_t pb_spi_channel_init(pb_spi_channel_t* channel, pb_spi_t* connect_to, uint16_t slave_select_pin, pb_spi_channel_ss_type_t slave_select_enable_value);
 
-pb_spi_retval_t pb_spi_queue_data(pb_spi_channel_t* channel, char char_to_send);
-pb_spi_retval_t pb_spi_send_data(pb_spi_channel_t* channel, pb_spi_transmit_complete_cb_t cb);
-
-pb_spi_retval_t pb_spi_subscribe(pb_spi_channel_t* channel, pb_spi_on_evt_cb_t cb, void* context);
-pb_spi_retval_t pb_spi_unsubscribe(pb_spi_channel_t* channel, pb_spi_on_evt_cb_t cb);
-
-uint32_t        pb_spi_process(pb_spi_channel_t* channel);
-
-
+pb_spi_retval_t pb_spi_send(pb_spi_channel_t* channel, uint8_t* data, uint32_t data_length, pb_spi_send_complete_cb_t cb);
+pb_spi_retval_t pb_spi_receive(pb_spi_channel_t* channel, uint32_t bytes_to_receive, pb_spi_receive_complete_cb_t cb);
+pb_spi_retval_t pb_spi_send_and_receive(pb_spi_channel_t* channel, uint8_t* send_data, uint32_t send_data_length, pb_spi_send_and_receive_complete_cb_t cb);
 
 #endif /* PB_SPI_H__ */

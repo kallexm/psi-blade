@@ -1,5 +1,9 @@
 #include "pb_sercom_handlers.h"
 
+#include "pb_critical_sections.h"
+
+#include <stdlib.h>
+
 typedef struct
 {
     pb_sercom_handler_t  app_int_handler;
@@ -12,29 +16,29 @@ pb_sercom_app_handler_t app_handler[SERCOM_INST_NUM] = {0};
 pb_sercom_handlers_retval_t pb_sercom_handlers_register_callback(Sercom* SERCOMn, pb_sercom_handler_t cb, void* context)
 {   
     uint32_t sercom_number = SERCOM_INST_NUM;
-    switch(SERCOMn)
+    switch((uint32_t)SERCOMn)
     {
-        case SERCOM0:
+        case (uint32_t)SERCOM0:
             sercom_number = 0;
             break;
 
-        case SERCOM1:
+        case (uint32_t)SERCOM1:
             sercom_number = 1;
             break;
 
-        case SERCOM2:
+        case (uint32_t)SERCOM2:
             sercom_number = 2;
             break;
 
-        case SERCOM3:
+        case (uint32_t)SERCOM3:
             sercom_number = 3;
             break;
 
-        case SERCOM4:
+        case (uint32_t)SERCOM4:
             sercom_number = 4;
             break;
 
-        case SERCOM5:
+        case (uint32_t)SERCOM5:
             sercom_number = 5;
             break;
 
@@ -58,29 +62,29 @@ pb_sercom_handlers_retval_t pb_sercom_handlers_register_callback(Sercom* SERCOMn
 pb_sercom_handlers_retval_t pb_sercom_handlers_unregister_callback(Sercom* SERCOMn)
 {
     uint32_t sercom_number = SERCOM_INST_NUM;
-    switch(SERCOMn)
+    switch((uint32_t)SERCOMn)
     {
-        case SERCOM0:
+        case (uint32_t)SERCOM0:
             sercom_number = 0;
             break;
 
-        case SERCOM1:
+        case (uint32_t)SERCOM1:
             sercom_number = 1;
             break;
 
-        case SERCOM2:
+        case (uint32_t)SERCOM2:
             sercom_number = 2;
             break;
 
-        case SERCOM3:
+        case (uint32_t)SERCOM3:
             sercom_number = 3;
             break;
 
-        case SERCOM4:
+        case (uint32_t)SERCOM4:
             sercom_number = 4;
             break;
 
-        case SERCOM5:
+        case (uint32_t)SERCOM5:
             sercom_number = 5;
             break;
 
