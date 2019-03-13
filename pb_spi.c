@@ -59,14 +59,23 @@ void pb_spi_on_interrupt(void* context)
         switch (spi->state)
         {
             case PB_SPI_STATE_SENDING:
-                spi->send_callback(spi->transmitting_channel);
+                if (spi->send_callback != NULL)
+                {
+                    spi->send_callback(spi->transmitting_channel);
+                }
                 break;
 
             case PB_SPI_STATE_RECEIVING:
-                spi->receive_callback(spi->transmitting_channel, spi->receive_data_buffer, spi->receive_data_length);
+                if (spi->receive_callback != NULL)
+                {
+                    spi->receive_callback(spi->transmitting_channel, spi->receive_data_buffer, spi->receive_data_length);
+                }
                 break;
             case PB_SPI_STATE_SEND_AND_RECEIVE:
-                spi->send_and_receive_callback(spi->transmitting_channel, spi->receive_data_buffer, spi->receive_data_length);
+                if (spi->send_and_receive_callback != NULL)
+                {
+                    spi->send_and_receive_callback(spi->transmitting_channel, spi->receive_data_buffer, spi->receive_data_length);
+                }
                 break;
 
             default:
@@ -604,4 +613,18 @@ pb_spi_retval_t pb_spi_send_and_receive(pb_spi_channel_t* channel, uint8_t* send
     spi->send_index = 1;
 
     return PB_SPI_SUCCESS;
+}
+
+
+bool pb_spi_is_ready(pb_spi_channel_t* channel)
+{
+    pb_spi_retval_t spi_retval = pb_spi_ready(channel->spi_transport);
+    if (spi_retval == PB_SPI_SUCCESS)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }

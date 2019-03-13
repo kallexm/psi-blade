@@ -168,4 +168,6 @@ pb_spi_retval_t pb_spi_send(pb_spi_channel_t* channel, uint8_t* data, uint32_t d
 pb_spi_retval_t pb_spi_receive(pb_spi_channel_t* channel, uint32_t bytes_to_receive, pb_spi_receive_complete_cb_t cb);
 pb_spi_retval_t pb_spi_send_and_receive(pb_spi_channel_t* channel, uint8_t* send_data, uint32_t send_data_length, pb_spi_send_and_receive_complete_cb_t cb);
 
+bool            pb_spi_is_ready(pb_spi_channel_t* channel);
+
 #endif /* PB_SPI_H__ */
