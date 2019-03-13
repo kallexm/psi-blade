@@ -56,7 +56,7 @@ pb_gpio_retval_t pb_gpio_pin_dir(uint8_t pin, pb_gpio_dir_t direction);
 pb_gpio_retval_t pb_gpio_pin_write(uint8_t pin, pb_gpio_value_t value);
 
 
-uint8_t       pb_gpio_pin_read(uint8_t pin);
+uint8_t          pb_gpio_pin_read(uint8_t pin);
 
 
 pb_gpio_retval_t pb_gpio_pin_strength(uint8_t pin, pb_gpio_drvstr_t drive_strength);
